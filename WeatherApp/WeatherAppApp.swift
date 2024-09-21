@@ -6,12 +6,25 @@
 //
 
 import SwiftUI
+import UIKit
 
 @main
 struct WeatherAppApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            MyUIViewControllerRepresentable()
+                .edgesIgnoringSafeArea(.all)
         }
+    }
+}
+
+struct MyUIViewControllerRepresentable: UIViewControllerRepresentable {
+    
+    func makeUIViewController(context: Context) -> UIViewController {
+        return LocationViewController()
+    }
+
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
+        // Any updates go here if needed
     }
 }

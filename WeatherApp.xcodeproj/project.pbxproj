@@ -11,6 +11,13 @@
 		B9408ECC2C9F29D6004CEFA0 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9408ECB2C9F29D6004CEFA0 /* ContentView.swift */; };
 		B9408ECE2C9F29D8004CEFA0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B9408ECD2C9F29D8004CEFA0 /* Assets.xcassets */; };
 		B9408ED12C9F29D8004CEFA0 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B9408ED02C9F29D8004CEFA0 /* Preview Assets.xcassets */; };
+		B9408ED82C9F3152004CEFA0 /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9408ED72C9F3152004CEFA0 /* APIService.swift */; };
+		B9408EDB2C9F322E004CEFA0 /* APIEnums.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9408EDA2C9F322E004CEFA0 /* APIEnums.swift */; };
+		B9408EDE2C9F3461004CEFA0 /* WeatherModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9408EDD2C9F3461004CEFA0 /* WeatherModel.swift */; };
+		B9408EE02C9F3944004CEFA0 /* Date+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9408EDF2C9F3944004CEFA0 /* Date+Extension.swift */; };
+		B9408EE22C9F3BAC004CEFA0 /* LocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9408EE12C9F3BAC004CEFA0 /* LocationService.swift */; };
+		B9408EE72C9F47B2004CEFA0 /* CLLocationDegrees+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9408EE62C9F47B1004CEFA0 /* CLLocationDegrees+Extension.swift */; };
+		B9408EEA2C9F5CE4004CEFA0 /* LocationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9408EE92C9F5CE4004CEFA0 /* LocationViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -19,6 +26,13 @@
 		B9408ECB2C9F29D6004CEFA0 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		B9408ECD2C9F29D8004CEFA0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B9408ED02C9F29D8004CEFA0 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		B9408ED72C9F3152004CEFA0 /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
+		B9408EDA2C9F322E004CEFA0 /* APIEnums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIEnums.swift; sourceTree = "<group>"; };
+		B9408EDD2C9F3461004CEFA0 /* WeatherModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherModel.swift; sourceTree = "<group>"; };
+		B9408EDF2C9F3944004CEFA0 /* Date+Extension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Date+Extension.swift"; sourceTree = "<group>"; };
+		B9408EE12C9F3BAC004CEFA0 /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
+		B9408EE62C9F47B1004CEFA0 /* CLLocationDegrees+Extension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CLLocationDegrees+Extension.swift"; sourceTree = "<group>"; };
+		B9408EE92C9F5CE4004CEFA0 /* LocationViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -51,6 +65,10 @@
 		B9408EC82C9F29D6004CEFA0 /* WeatherApp */ = {
 			isa = PBXGroup;
 			children = (
+				B9408EE82C9F5CBE004CEFA0 /* UIKitViews */,
+				B9408EE32C9F3BB4004CEFA0 /* Models */,
+				B9408EDC2C9F344D004CEFA0 /* Services */,
+				B9408ED92C9F3222004CEFA0 /* Utils */,
 				B9408EC92C9F29D6004CEFA0 /* WeatherAppApp.swift */,
 				B9408ECB2C9F29D6004CEFA0 /* ContentView.swift */,
 				B9408ECD2C9F29D8004CEFA0 /* Assets.xcassets */,
@@ -65,6 +83,41 @@
 				B9408ED02C9F29D8004CEFA0 /* Preview Assets.xcassets */,
 			);
 			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+		B9408ED92C9F3222004CEFA0 /* Utils */ = {
+			isa = PBXGroup;
+			children = (
+				B9408EDA2C9F322E004CEFA0 /* APIEnums.swift */,
+				B9408EDF2C9F3944004CEFA0 /* Date+Extension.swift */,
+				B9408EE62C9F47B1004CEFA0 /* CLLocationDegrees+Extension.swift */,
+			);
+			path = Utils;
+			sourceTree = "<group>";
+		};
+		B9408EDC2C9F344D004CEFA0 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				B9408ED72C9F3152004CEFA0 /* APIService.swift */,
+				B9408EE12C9F3BAC004CEFA0 /* LocationService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		B9408EE32C9F3BB4004CEFA0 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				B9408EDD2C9F3461004CEFA0 /* WeatherModel.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		B9408EE82C9F5CBE004CEFA0 /* UIKitViews */ = {
+			isa = PBXGroup;
+			children = (
+				B9408EE92C9F5CE4004CEFA0 /* LocationViewController.swift */,
+			);
+			path = UIKitViews;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -137,8 +190,15 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B9408EE22C9F3BAC004CEFA0 /* LocationService.swift in Sources */,
+				B9408EE72C9F47B2004CEFA0 /* CLLocationDegrees+Extension.swift in Sources */,
 				B9408ECC2C9F29D6004CEFA0 /* ContentView.swift in Sources */,
+				B9408ED82C9F3152004CEFA0 /* APIService.swift in Sources */,
+				B9408EDB2C9F322E004CEFA0 /* APIEnums.swift in Sources */,
 				B9408ECA2C9F29D6004CEFA0 /* WeatherAppApp.swift in Sources */,
+				B9408EEA2C9F5CE4004CEFA0 /* LocationViewController.swift in Sources */,
+				B9408EDE2C9F3461004CEFA0 /* WeatherModel.swift in Sources */,
+				B9408EE02C9F3944004CEFA0 /* Date+Extension.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
