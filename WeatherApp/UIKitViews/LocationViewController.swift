@@ -5,60 +5,127 @@
 //  Created by Arghadeep Chakraborty on 9/21/24.
 //
 
-import Foundation
 import UIKit
+import SwiftUI
 
-final class LocationViewController: UIViewController {
+final class LocationViewController: UIViewController, UITextFieldDelegate {
     
-    var isDayTime: Bool = true
-    let searchTextField = UITextField()
+    private var isDayTime: Bool = true
+    private let searchTextField = UITextField()
+    private let scrollView = UIScrollView()
+    private let containerView = UIView()
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
         updateGradientBasedOnTime()
+        setupScrollView()
         setupUI()
+        setupGesture()
+        
+        searchTextField.delegate = self
     }
     
-    func updateGradientBasedOnTime() {
-        let hour = Calendar.current.component(.hour, from: Date())
-        
-        if hour >= 6 && hour < 18 {
-            isDayTime = true
-            setDayGradient()
-        } else {
-            isDayTime = false
-            setNightGradient()
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillShow), name: UIResponder.keyboardWillShowNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillHide), name: UIResponder.keyboardWillHideNotification, object: nil)
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardWillShowNotification, object: nil)
+        NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardWillHideNotification, object: nil)
+    }
+    
+    @objc private func keyboardWillShow(notification: Notification) {
+        if let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue {
+            let keyboardHeight = keyboardFrame.cgRectValue.height
+            scrollView.contentInset.bottom = keyboardHeight
+            scrollView.verticalScrollIndicatorInsets.bottom = keyboardHeight
         }
+    }
+    
+    @objc private func keyboardWillHide(notification: Notification) {
+        scrollView.contentInset.bottom = 0
+        scrollView.verticalScrollIndicatorInsets.bottom = 0
+    }
+    
+    @objc private func searchButtonTapped() {
+        performSearch()
+    }
+    
+    @objc private func moveToWeatherDetailsView() {
+        let weatherVM = WeatherViewModel(cityName: "Newport")
+        let weatherDetailView = WeatherDetailView(weatherVM: weatherVM)
+        let hostingController = UIHostingController(rootView: weatherDetailView)
+        hostingController.modalPresentationStyle = .fullScreen
+        present(hostingController, animated: false, completion: nil)
+    }
+    
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        performSearch()
+        return true
+    }
+    
+    @objc private func performSearch() {
+        print("Search action performed with query: \(searchTextField.text ?? "")")
+        dismissKeyboard()
+    }
+    
+    private func setupGesture() {
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
+        view.addGestureRecognizer(tapGesture)
+    }
+    
+    @objc private func dismissKeyboard() {
+        searchTextField.resignFirstResponder()
+    }
+    
+    private func setupScrollView() {
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(scrollView)
         
+        NSLayoutConstraint.activate([
+            scrollView.topAnchor.constraint(equalTo: view.topAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor)
+        ])
+    }
+    
+    private func updateGradientBasedOnTime() {
+        let hour = Calendar.current.component(.hour, from: Date())
+        isDayTime = (hour >= 6 && hour < 18)
+        isDayTime ? setDayGradient() : setNightGradient()
         updatePlaceholderColor()
     }
     
-    func setDayGradient() {
+    private func setDayGradient() {
         let dayGradientLayer = CAGradientLayer()
         dayGradientLayer.colors = [
             UIColor(red: 0.1, green: 0.6, blue: 0.9, alpha: 1).cgColor,
             UIColor(red: 0.9, green: 0.85, blue: 0.5, alpha: 1).cgColor
         ]
-        dayGradientLayer.startPoint = CGPoint(x: 0.0, y: 0.0)
-        dayGradientLayer.endPoint = CGPoint(x: 1.0, y: 1.0)
+        dayGradientLayer.startPoint = CGPoint(x: 0.5, y: 0.0)
+        dayGradientLayer.endPoint = CGPoint(x: 0.5, y: 1.0)
         dayGradientLayer.frame = view.bounds
         view.layer.insertSublayer(dayGradientLayer, at: 0)
     }
     
-    func setNightGradient() {
+    private func setNightGradient() {
         let nightGradientLayer = CAGradientLayer()
         nightGradientLayer.colors = [
-            UIColor(red: 0.0, green: 0.0, blue: 0.3, alpha: 1).cgColor,
+            UIColor(red: 0.0, green: 0.0, blue: 0.1, alpha: 1).cgColor,
             UIColor(red: 0.1, green: 0.1, blue: 0.4, alpha: 1).cgColor
         ]
-        nightGradientLayer.startPoint = CGPoint(x: 0.0, y: 0.0)
-        nightGradientLayer.endPoint = CGPoint(x: 1.0, y: 1.0)
+        nightGradientLayer.startPoint = CGPoint(x: 0.5, y: 0.0)
+        nightGradientLayer.endPoint = CGPoint(x: 0.5, y: 1.0)
         nightGradientLayer.frame = view.bounds
         view.layer.insertSublayer(nightGradientLayer, at: 0)
     }
     
-    func updatePlaceholderColor() {
+    private func updatePlaceholderColor() {
         let placeholderColor: UIColor = isDayTime ? UIColor.white.withAlphaComponent(0.4) : UIColor.lightGray
         searchTextField.attributedPlaceholder = NSAttributedString(
             string: "Enter city name",
@@ -66,7 +133,34 @@ final class LocationViewController: UIViewController {
         )
     }
     
-    func setupUI() {
+    private func setupUI() {
+        containerView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.addSubview(containerView)
+        
+        NSLayoutConstraint.activate([
+            containerView.topAnchor.constraint(equalTo: scrollView.topAnchor),
+            containerView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
+            containerView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
+            containerView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
+            containerView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
+            containerView.heightAnchor.constraint(greaterThanOrEqualTo: scrollView.heightAnchor)
+        ])
+        
+        // Create and configure MiddleView
+        let middleView = UIView()
+        middleView.translatesAutoresizingMaskIntoConstraints = false
+        containerView.addSubview(middleView)
+        
+        // Centering MiddleView in ContainerView
+        NSLayoutConstraint.activate([
+            middleView.centerXAnchor.constraint(equalTo: containerView.centerXAnchor),
+            middleView.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
+            middleView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 20),
+            middleView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -20),
+            middleView.topAnchor.constraint(greaterThanOrEqualTo: containerView.topAnchor, constant: 20),
+            middleView.bottomAnchor.constraint(lessThanOrEqualTo: containerView.bottomAnchor, constant: -20)
+        ])
+        
         // Large Title Label
         let largeTitleLabel = UILabel()
         largeTitleLabel.text = "Welcome to the Weather App"
@@ -86,13 +180,11 @@ final class LocationViewController: UIViewController {
         bodyLabel.translatesAutoresizingMaskIntoConstraints = false
         
         // TextField for City Search
-        searchTextField.placeholder = "Enter city name"
         searchTextField.borderStyle = .roundedRect
         searchTextField.backgroundColor = UIColor(white: 1.0, alpha: 0.2)
         searchTextField.textColor = .white
         searchTextField.font = UIFont.systemFont(ofSize: 17)
         searchTextField.translatesAutoresizingMaskIntoConstraints = false
-        
         
         var configuration = UIButton.Configuration.plain()
         configuration.image = UIImage(systemName: "magnifyingglass")
@@ -100,6 +192,7 @@ final class LocationViewController: UIViewController {
         
         let searchButton = UIButton(configuration: configuration, primaryAction: nil)
         searchButton.tintColor = .white
+        searchButton.addTarget(self, action: #selector(searchButtonTapped), for: .touchUpInside)
         
         searchTextField.rightView = searchButton
         searchTextField.rightViewMode = .always
@@ -120,54 +213,46 @@ final class LocationViewController: UIViewController {
         shareLocationButton.setTitleColor(.white, for: .normal)
         shareLocationButton.layer.cornerRadius = 5
         shareLocationButton.translatesAutoresizingMaskIntoConstraints = false
+        shareLocationButton.addTarget(self, action: #selector(moveToWeatherDetailsView), for: .touchUpInside)
         
-        let containerView = UIView()
-        containerView.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(containerView)
         
-        // Add subviews
-        containerView.addSubview(largeTitleLabel)
-        containerView.addSubview(bodyLabel)
-        containerView.addSubview(searchTextField)
-        containerView.addSubview(orLabel)
-        containerView.addSubview(shareLocationButton)
+        // Add subviews to MiddleView
+        middleView.addSubview(largeTitleLabel)
+        middleView.addSubview(bodyLabel)
+        middleView.addSubview(searchTextField)
+        middleView.addSubview(orLabel)
+        middleView.addSubview(shareLocationButton)
         
+        // Layout Constraints for MiddleView's subviews
         NSLayoutConstraint.activate([
-            containerView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            containerView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            containerView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            containerView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-        ])
-        
-        // Layout Constraints
-        NSLayoutConstraint.activate([
-            // Center vertically
-            largeTitleLabel.topAnchor.constraint(equalTo: containerView.topAnchor), // Align with top of container
-            largeTitleLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
-            largeTitleLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            // Large Title Label
+            largeTitleLabel.topAnchor.constraint(equalTo: middleView.topAnchor, constant: 40),
+            largeTitleLabel.leadingAnchor.constraint(equalTo: middleView.leadingAnchor),
+            largeTitleLabel.trailingAnchor.constraint(equalTo: middleView.trailingAnchor),
             
             // Body Label
             bodyLabel.topAnchor.constraint(equalTo: largeTitleLabel.bottomAnchor, constant: 20),
-            bodyLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
-            bodyLabel.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
-            
+            bodyLabel.leadingAnchor.constraint(equalTo: middleView.leadingAnchor),
+            bodyLabel.trailingAnchor.constraint(equalTo: middleView.trailingAnchor),
             
             // Search TextField
             searchTextField.topAnchor.constraint(equalTo: bodyLabel.bottomAnchor, constant: 30),
-            searchTextField.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
-            searchTextField.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
-            searchTextField.heightAnchor.constraint(equalToConstant: 40),
+            searchTextField.leadingAnchor.constraint(equalTo: middleView.leadingAnchor),
+            searchTextField.trailingAnchor.constraint(equalTo: middleView.trailingAnchor),
+            searchTextField.heightAnchor.constraint(equalToConstant: 44),
             
             // 'Or' Label
             orLabel.topAnchor.constraint(equalTo: searchTextField.bottomAnchor, constant: 20),
-            orLabel.centerXAnchor.constraint(equalTo: containerView.centerXAnchor),
+            orLabel.centerXAnchor.constraint(equalTo: middleView.centerXAnchor),
             
             // Share Location Button
             shareLocationButton.topAnchor.constraint(equalTo: orLabel.bottomAnchor, constant: 20),
-            shareLocationButton.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
-            shareLocationButton.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
-            shareLocationButton.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
-            shareLocationButton.heightAnchor.constraint(equalToConstant: 40)
+            shareLocationButton.centerXAnchor.constraint(equalTo: middleView.centerXAnchor),
+            shareLocationButton.leadingAnchor.constraint(equalTo: middleView.leadingAnchor, constant: 20),
+            shareLocationButton.trailingAnchor.constraint(equalTo: middleView.trailingAnchor, constant: -20),
+            shareLocationButton.heightAnchor.constraint(equalToConstant: 44),
+            shareLocationButton.bottomAnchor.constraint(equalTo: middleView.bottomAnchor, constant: -20)
         ])
     }
+    
 }

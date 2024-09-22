@@ -36,6 +36,7 @@ final class APIService {
             
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = dateDecodingStrategy
+            decoder.keyDecodingStrategy = .convertFromSnakeCase
             
             do {
                 let decodedData = try decoder.decode(WeatherModel.self, from: data)
