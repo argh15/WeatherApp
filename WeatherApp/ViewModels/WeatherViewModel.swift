@@ -12,6 +12,7 @@ class WeatherViewModel: ObservableObject {
     @Published var weatherModel: WeatherModel? = nil
     @Published var errorMessage: String? = nil
     @Published var isLoading: Bool = false
+    @Published var isDayTime: Bool = false
     
     let apiService = APIService.sharedInstance
     let locationService = LocationService.sharedInstance
@@ -19,10 +20,14 @@ class WeatherViewModel: ObservableObject {
     var lat: Double?
     var lon: Double?
     
-    init(cityName: String? = nil, lat: Double? = nil, lon: Double? = nil) {
+    init(cityName: String? = nil, 
+         lat: Double? = nil,
+         lon: Double? = nil,
+         isDayTime: Bool) {
         self.cityName = cityName
         self.lat = lat
         self.lon = lon
+        self.isDayTime = isDayTime
     }
     
     
@@ -186,7 +191,14 @@ class WeatherViewModel: ObservableObject {
         }
     }
     
-    func fetchData() {
+    func fetchData(currentLocation: Bool = false) {
+        
+        if currentLocation {
+            self.lat = GlobalLocation.latitude
+            self.lon = GlobalLocation.longitude
+            self.weatherModel = nil
+        }
+        
         isLoading = true
         errorMessage = nil
         
@@ -212,6 +224,7 @@ class WeatherViewModel: ObservableObject {
     }
     
     func fetchWeatherData() {
+        
         guard let lat = lat, let lon = lon else {
             errorMessage = "Coordinates not available."
             isLoading = false

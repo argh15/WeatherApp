@@ -7,13 +7,17 @@
 
 import UIKit
 import SwiftUI
+import CoreLocation
 
-final class LocationViewController: UIViewController, UITextFieldDelegate {
+final class LocationViewController: UIViewController, UITextFieldDelegate, CLLocationManagerDelegate {
     
     private var isDayTime: Bool = true
     private let searchTextField = UITextField()
     private let scrollView = UIScrollView()
     private let containerView = UIView()
+    private let locationManager = CLLocationManager()
+    private var lastKnownLatitude: Double?
+    private var lastKnownLongitude: Double?
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -24,6 +28,55 @@ final class LocationViewController: UIViewController, UITextFieldDelegate {
         setupGesture()
         
         searchTextField.delegate = self
+        locationManager.delegate = self
+        locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+    }
+    
+    private func shouldFetchWeather(for latitude: Double, longitude: Double) -> Bool {
+        // Check if the current location is significantly different from the last known location
+        let hasMovedSignificantly = (lastKnownLatitude != latitude || lastKnownLongitude != longitude)
+
+        // If the location has moved significantly, update the last known coordinates
+        if hasMovedSignificantly {
+            lastKnownLatitude = latitude
+            lastKnownLongitude = longitude
+            
+            // Update the global location variables
+            GlobalLocation.latitude = latitude
+            GlobalLocation.longitude = longitude
+        }
+        
+        return hasMovedSignificantly
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+        switch status {
+        case .authorizedWhenInUse, .authorizedAlways:
+            locationManager.startUpdatingLocation()
+        case .denied, .restricted:
+            // Handle denied access
+            print("Location access denied.")
+        default:
+            break
+        }
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let location = locations.first else { return }
+        
+        let latitude = location.coordinate.latitude
+        let longitude = location.coordinate.longitude
+        print("Latitude: \(latitude), Longitude: \(longitude)")
+        
+        if shouldFetchWeather(for: latitude, longitude: longitude) {
+            moveToWeatherDetailsView(cityName: nil, lat: latitude, lon: longitude)
+        }
+        
+        locationManager.stopUpdatingLocation()
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        print("Failed to find user's location: \(error.localizedDescription)")
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -55,8 +108,12 @@ final class LocationViewController: UIViewController, UITextFieldDelegate {
         performSearch()
     }
     
-    @objc private func moveToWeatherDetailsView() {
-        let weatherVM = WeatherViewModel(cityName: "Newport")
+    @objc private func fetchLocation() {
+        locationManager.requestWhenInUseAuthorization()
+    }
+    
+    private func moveToWeatherDetailsView(cityName: String?, lat: Double?, lon: Double?) {
+        let weatherVM = WeatherViewModel(cityName: cityName, lat: lat, lon: lon, isDayTime: isDayTime)
         let weatherDetailView = WeatherDetailView(weatherVM: weatherVM)
         let hostingController = UIHostingController(rootView: weatherDetailView)
         hostingController.modalPresentationStyle = .fullScreen
@@ -69,7 +126,7 @@ final class LocationViewController: UIViewController, UITextFieldDelegate {
     }
     
     @objc private func performSearch() {
-        print("Search action performed with query: \(searchTextField.text ?? "")")
+        moveToWeatherDetailsView(cityName: searchTextField.text, lat: nil, lon: nil)
         dismissKeyboard()
     }
     
@@ -188,7 +245,7 @@ final class LocationViewController: UIViewController, UITextFieldDelegate {
         
         var configuration = UIButton.Configuration.plain()
         configuration.image = UIImage(systemName: "magnifyingglass")
-        configuration.imagePadding = 16 // Adjust the padding as needed
+        configuration.imagePadding = 16
         
         let searchButton = UIButton(configuration: configuration, primaryAction: nil)
         searchButton.tintColor = .white
@@ -213,7 +270,7 @@ final class LocationViewController: UIViewController, UITextFieldDelegate {
         shareLocationButton.setTitleColor(.white, for: .normal)
         shareLocationButton.layer.cornerRadius = 5
         shareLocationButton.translatesAutoresizingMaskIntoConstraints = false
-        shareLocationButton.addTarget(self, action: #selector(moveToWeatherDetailsView), for: .touchUpInside)
+        shareLocationButton.addTarget(self, action: #selector(fetchLocation), for: .touchUpInside)
         
         
         // Add subviews to MiddleView
@@ -237,8 +294,8 @@ final class LocationViewController: UIViewController, UITextFieldDelegate {
             
             // Search TextField
             searchTextField.topAnchor.constraint(equalTo: bodyLabel.bottomAnchor, constant: 30),
-            searchTextField.leadingAnchor.constraint(equalTo: middleView.leadingAnchor),
-            searchTextField.trailingAnchor.constraint(equalTo: middleView.trailingAnchor),
+            searchTextField.leadingAnchor.constraint(equalTo: middleView.leadingAnchor, constant: 20),
+            searchTextField.trailingAnchor.constraint(equalTo: middleView.trailingAnchor, constant: -20),
             searchTextField.heightAnchor.constraint(equalToConstant: 44),
             
             // 'Or' Label

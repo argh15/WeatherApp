@@ -18,6 +18,11 @@ struct WeatherAppApp: App {
     }
 }
 
+struct GlobalLocation {
+    static var latitude: Double?
+    static var longitude: Double?
+}
+
 struct MyUIViewControllerRepresentable: UIViewControllerRepresentable {
     
     func makeUIViewController(context: Context) -> UIViewController {

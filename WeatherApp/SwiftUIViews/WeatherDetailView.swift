@@ -10,8 +10,12 @@ struct WeatherDetailView: View {
     
     var body: some View {
         ZStack {
-            Color(.red)
-                .edgesIgnoringSafeArea(.all)
+            if weatherVM.isDayTime {
+                DayGradientView()
+            } else {
+                NightGradientView()
+            }
+            
             VStack {
                 if weatherVM.isLoading {
                     ProgressView("Loading...")
@@ -23,20 +27,39 @@ struct WeatherDetailView: View {
                         .padding()
                 } else if weatherVM.weatherModel != nil {
                     ScrollView(showsIndicators: false) {
-                        ZStack(alignment: .topTrailing) {
+                        ZStack(alignment: .top) {
                             VStack {
                                 topView
                                 gridView
                             }
-                            Button(action: {
-                                print("Edit tapped")
-                            }) {
-                                Text("Edit")
-                                    .font(.caption)
-                                    .padding(8)
-                                    .background(Color.blue.opacity(0.7))
-                                    .foregroundColor(.white)
-                                    .cornerRadius(8)
+                            HStack {
+                                Button(action: {
+                                    weatherVM.fetchData(currentLocation: true)
+                                }) {
+                                    Text("Reset")
+                                        .font(.system(size: 17, weight: .medium))
+                                        .padding(.horizontal, 24)
+                                        .padding(.vertical, 8)
+                                        .background(Color(.init(white: 1.0, alpha: 0.3)))
+                                        .foregroundColor(.white)
+                                        .cornerRadius(5)
+                                }
+                                .padding(.top, 16)
+                                
+                                Spacer()
+                                
+                                Button(action: {
+                                    print("Edit tapped")
+                                }) {
+                                    Text("Edit")
+                                        .font(.system(size: 17, weight: .medium))
+                                        .padding(.horizontal, 24)
+                                        .padding(.vertical, 8)
+                                        .background(Color(.init(white: 1.0, alpha: 0.3)))
+                                        .foregroundColor(.white)
+                                        .cornerRadius(5)
+                                }
+                                .padding(.top, 16)
                             }
                         }
                     }
@@ -56,6 +79,7 @@ extension WeatherDetailView {
         VStack(alignment: .center, spacing: 0) {
             Text(weatherVM.location)
                 .font(.headline)
+                .padding(.top, 16)
             AsyncImage(url: weatherVM.weatherModel?.weather?.first?.iconURL) { image in
                 image
                     .resizable()
@@ -81,14 +105,14 @@ extension WeatherDetailView {
                     .font(.title3)
             }
         }
-        .padding(.bottom, 80)
+        .foregroundStyle(.white)
+        .padding(.bottom, 40)
     }
     
     private var windCardView: some View {
         GroupBox(label: Label("Wind", systemImage: "wind")) {
-            Spacer()
             HStack {
-                VStack(alignment: .trailing) {
+                VStack(alignment: .trailing, spacing: 0) {
                     HStack {
                         Text(weatherVM.windSpeed)
                             .font(.title)
@@ -99,8 +123,10 @@ extension WeatherDetailView {
                                 .font(.caption)
                         }
                     }
-                    Divider()
-                        .frame(width: 100)
+                    Rectangle()
+                        .fill(.secondary)
+                        .frame(width: 100, height: 1)
+                        .padding(.vertical, 8)
                     HStack {
                         Text(weatherVM.gustSpeed)
                             .font(.title)
@@ -177,7 +203,7 @@ extension WeatherDetailView {
     }
     
     private var cloudsCardView: some View {
-        GroupBox(label: Label("Clouds", systemImage: "icloud.fill")) {
+        GroupBox(label: Label("Clouds", systemImage: "cloud")) {
             Spacer()
             VStack(alignment: .leading) {
                 Spacer()
@@ -249,6 +275,34 @@ extension WeatherDetailView {
     }
 }
 
+struct DayGradientView: View {
+    var body: some View {
+        LinearGradient(
+            gradient: Gradient(colors: [
+                Color(red: 0.1, green: 0.6, blue: 0.9),
+                Color(red: 0.9, green: 0.85, blue: 0.5)
+            ]),
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        .edgesIgnoringSafeArea(.all)
+    }
+}
+
+struct NightGradientView: View {
+    var body: some View {
+        LinearGradient(
+            gradient: Gradient(colors: [
+                Color(red: 0.0, green: 0.0, blue: 0.1),
+                Color(red: 0.1, green: 0.1, blue: 0.4)
+            ]),
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        .edgesIgnoringSafeArea(.all)
+    }
+}
+
 #Preview {
-    WeatherDetailView(weatherVM: WeatherViewModel(cityName: "Austin"))
+    WeatherDetailView(weatherVM: WeatherViewModel(cityName: "Hudson", isDayTime: true))
 }
