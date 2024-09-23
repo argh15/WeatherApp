@@ -9,11 +9,22 @@ import UIKit
 import SwiftUI
 import CoreLocation
 
-final class LocationViewController: UIViewController, UITextFieldDelegate {
+final class LocationViewController: UIViewController {
     
     private let searchTextField = UITextField()
     private let scrollView = UIScrollView()
     private let containerView = UIView()
+    
+    private var viewModel: LocationViewModel
+    
+    init(viewModel: LocationViewModel) {
+        self.viewModel = viewModel
+        super.init(nibName: nil, bundle: nil)
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -24,64 +35,61 @@ final class LocationViewController: UIViewController, UITextFieldDelegate {
         setupGesture()
         
         searchTextField.delegate = self
+        
+        setupKeyboardNotifications()
     }
     
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillShow), name: UIResponder.keyboardWillShowNotification, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillHide), name: UIResponder.keyboardWillHideNotification, object: nil)
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
     
-    override func viewWillDisappear(_ animated: Bool) {
-        super.viewWillDisappear(animated)
-        NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardWillShowNotification, object: nil)
-        NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardWillHideNotification, object: nil)
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        updateGradientLayer()
     }
     
-    @objc private func keyboardWillShow(notification: Notification) {
-        if let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue {
-            let keyboardHeight = keyboardFrame.cgRectValue.height
-            scrollView.contentInset.bottom = keyboardHeight
-            scrollView.verticalScrollIndicatorInsets.bottom = keyboardHeight
-        }
-    }
-    
-    @objc private func keyboardWillHide(notification: Notification) {
-        scrollView.contentInset.bottom = 0
-        scrollView.verticalScrollIndicatorInsets.bottom = 0
-    }
-    
-    @objc private func searchButtonTapped() {
-        performSearch()
-    }
-    
-    @objc private func fetchLocation() {
-        LocationService.sharedInstance.requestLocationPermission { [weak self] result in
-            switch result {
-            case .success:
-                self?.moveToWeatherDetailsView(cityName: nil)
-            case .failure(let error):
-                print("Error: \(error.localizedDescription)")
+    private func updateGradientLayer() {
+        if let layers = view.layer.sublayers {
+            for layer in layers {
+                if layer is CAGradientLayer {
+                    layer.frame = view.bounds
+                }
             }
         }
     }
     
-    private func moveToWeatherDetailsView(cityName: String?) {
-        let weatherVM = WeatherViewModel(cityName: cityName)
-        let weatherDetailView = WeatherDetailView(weatherVM: weatherVM)
-        let hostingController = UIHostingController(rootView: weatherDetailView)
-        hostingController.modalPresentationStyle = .fullScreen
-        present(hostingController, animated: false, completion: nil)
+    private func setupKeyboardNotifications() {
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillShow), name: UIResponder.keyboardWillShowNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillHide), name: UIResponder.keyboardWillHideNotification, object: nil)
     }
     
-    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
-        performSearch()
-        return true
+    @objc private func keyboardWillShow(notification: Notification) {
+        adjustScrollViewForKeyboard(notification: notification, isShowing: true)
+    }
+    
+    @objc private func keyboardWillHide(notification: Notification) {
+        adjustScrollViewForKeyboard(notification: notification, isShowing: false)
+    }
+    
+    private func adjustScrollViewForKeyboard(notification: Notification, isShowing: Bool) {
+        if let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue {
+            let keyboardHeight = keyboardFrame.cgRectValue.height
+            scrollView.contentInset.bottom = isShowing ? keyboardHeight : 0
+            scrollView.verticalScrollIndicatorInsets.bottom = isShowing ? keyboardHeight : 0
+        }
+    }
+    
+    @objc private func dismissKeyboard() {
+        searchTextField.resignFirstResponder()
+    }
+    
+    @objc private func fetchLocation() {
+        viewModel.fetchUserLocation()
     }
     
     @objc private func performSearch() {
         if let text = searchTextField.text, !text.isEmpty {
-            moveToWeatherDetailsView(cityName: searchTextField.text)
+            viewModel.onBoardingComplete(with: text)
         } else {
             showLocationAlert()
         }
@@ -90,26 +98,18 @@ final class LocationViewController: UIViewController, UITextFieldDelegate {
     
     private func showLocationAlert() {
         let alert = UIAlertController(
-            title: "Location Required",
-            message: "Can't proceed without location information. Please either enter a city name or share your current location.",
+            title: Constants.EmptyLocationAlertView.title,
+            message: Constants.EmptyLocationAlertView.message,
             preferredStyle: .alert
         )
-        
-        let dismissAction = UIAlertAction(title: "Dismiss", style: .cancel, handler: nil)
-        
+        let dismissAction = UIAlertAction(title: Constants.EmptyLocationAlertView.buttonTitle, style: .cancel, handler: nil)
         alert.addAction(dismissAction)
-        
-        // Present the alert
         self.present(alert, animated: true, completion: nil)
     }
     
     private func setupGesture() {
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
         view.addGestureRecognizer(tapGesture)
-    }
-    
-    @objc private func dismissKeyboard() {
-        searchTextField.resignFirstResponder()
     }
     
     private func setupScrollView() {
@@ -156,7 +156,7 @@ final class LocationViewController: UIViewController, UITextFieldDelegate {
     private func updatePlaceholderColor() {
         let placeholderColor: UIColor = Helpers.isNight ? UIColor.lightGray : UIColor.white.withAlphaComponent(0.4)
         searchTextField.attributedPlaceholder = NSAttributedString(
-            string: "Enter city name",
+            string: Constants.SearchView.placeholderUIKit,
             attributes: [NSAttributedString.Key.foregroundColor: placeholderColor]
         )
     }
@@ -173,6 +173,11 @@ final class LocationViewController: UIViewController, UITextFieldDelegate {
             containerView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
             containerView.heightAnchor.constraint(greaterThanOrEqualTo: scrollView.heightAnchor)
         ])
+        
+        setupSubviews()
+    }
+    
+    private func setupSubviews() {
         
         // Create and configure MiddleView
         let middleView = UIView()
@@ -191,7 +196,7 @@ final class LocationViewController: UIViewController, UITextFieldDelegate {
         
         // Large Title Label
         let largeTitleLabel = UILabel()
-        largeTitleLabel.text = "Welcome to the Weather App"
+        largeTitleLabel.text = Constants.OnBoardingView.title
         largeTitleLabel.font = UIFont.systemFont(ofSize: 34, weight: .bold)
         largeTitleLabel.textAlignment = .center
         largeTitleLabel.textColor = .white
@@ -200,7 +205,7 @@ final class LocationViewController: UIViewController, UITextFieldDelegate {
         
         // Body Label
         let bodyLabel = UILabel()
-        bodyLabel.text = "Please enter a city name or share your location to get the weather in your area"
+        bodyLabel.text = Constants.OnBoardingView.message
         bodyLabel.font = UIFont.systemFont(ofSize: 17)
         bodyLabel.textAlignment = .center
         bodyLabel.textColor = .white
@@ -215,19 +220,19 @@ final class LocationViewController: UIViewController, UITextFieldDelegate {
         searchTextField.translatesAutoresizingMaskIntoConstraints = false
         
         var configuration = UIButton.Configuration.plain()
-        configuration.image = UIImage(systemName: "magnifyingglass")
+        configuration.image = UIImage(systemName: Constants.ImageNames.searchIcon)
         configuration.imagePadding = 16
         
         let searchButton = UIButton(configuration: configuration, primaryAction: nil)
         searchButton.tintColor = .white
-        searchButton.addTarget(self, action: #selector(searchButtonTapped), for: .touchUpInside)
+        searchButton.addTarget(self, action: #selector(performSearch), for: .touchUpInside)
         
         searchTextField.rightView = searchButton
         searchTextField.rightViewMode = .always
         
         // 'Or' Label
         let orLabel = UILabel()
-        orLabel.text = "or"
+        orLabel.text = Constants.OnBoardingView.orText
         orLabel.font = UIFont.systemFont(ofSize: 17, weight: .medium)
         orLabel.textAlignment = .center
         orLabel.textColor = .white
@@ -235,7 +240,7 @@ final class LocationViewController: UIViewController, UITextFieldDelegate {
         
         // Share Location Button
         let shareLocationButton = UIButton(type: .system)
-        shareLocationButton.setTitle("Share Location", for: .normal)
+        shareLocationButton.setTitle(Constants.OnBoardingView.shareLocButtonText, for: .normal)
         shareLocationButton.titleLabel?.font = UIFont.systemFont(ofSize: 17, weight: .medium)
         shareLocationButton.backgroundColor = UIColor(white: 1.0, alpha: 0.3)
         shareLocationButton.setTitleColor(.white, for: .normal)
@@ -282,5 +287,12 @@ final class LocationViewController: UIViewController, UITextFieldDelegate {
             shareLocationButton.bottomAnchor.constraint(equalTo: middleView.bottomAnchor, constant: -20)
         ])
     }
+}
+
+extension LocationViewController: UITextFieldDelegate {
     
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        performSearch()
+        return true
+    }
 }

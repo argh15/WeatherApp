@@ -30,23 +30,6 @@ class WeatherViewModel: ObservableObject {
         GlobalLocation.longitude = userLongitude
     }
     
-    private static var dateFormatter: DateFormatter {
-        let dateFormatter = DateFormatter()
-        dateFormatter.timeZone = TimeZone.current
-        return dateFormatter.shortHandFormatE_MMM_d
-    }
-    
-    private static var timeFormatter: DateFormatter {
-        let dateFormatter = DateFormatter()
-        dateFormatter.timeZone = TimeZone.current
-        return dateFormatter.timeFormath_mm_a
-    }
-    
-    private static var numberFormmater: NumberFormatter {
-        let numberFormatter = NumberFormatter()
-        return numberFormatter.wholeNumber
-    }
-    
     var location: String {
         return weatherModel?.name ?? "N/A"
     }
@@ -56,15 +39,15 @@ class WeatherViewModel: ObservableObject {
     }
     
     var currentTemp: String {
-        return "\(Self.numberFormmater.string(for: weatherModel?.main?.temp) ?? "N/A")°"
+        return "\(Helpers.numberFormmater.string(for: weatherModel?.main?.temp) ?? "N/A")°"
     }
     
     var lowTemp: String {
-        return "L: \(Self.numberFormmater.string(for: weatherModel?.main?.tempMin) ?? "N/A")°"
+        return "L: \(Helpers.numberFormmater.string(for: weatherModel?.main?.tempMin) ?? "N/A")°"
     }
     
     var highTemp: String {
-        return "H: \(Self.numberFormmater.string(for: weatherModel?.main?.tempMax) ?? "N/A")°"
+        return "H: \(Helpers.numberFormmater.string(for: weatherModel?.main?.tempMax) ?? "N/A")°"
     }
     
     var isRainSnowDataPresent: Bool {
@@ -86,25 +69,25 @@ class WeatherViewModel: ObservableObject {
     
     var sunrise: String {
         guard let sunrise = weatherModel?.sys?.sunrise else { return "N/A" }
-        return "Sunrise: \(Self.timeFormatter.string(from: sunrise))"
+        return "Sunrise: \(Helpers.timeFormatter.string(from: sunrise))"
     }
     
     var sunset: String {
         guard let sunset = weatherModel?.sys?.sunset else { return "N/A" }
-        return "Sunset: \(Self.timeFormatter.string(from: sunset))"
+        return "Sunset: \(Helpers.timeFormatter.string(from: sunset))"
     }
     
     var date: String {
         guard let date = weatherModel?.dt else { return "N/A" }
-        return Self.dateFormatter.string(from: date)
+        return Helpers.dateFormatter.string(from: date)
     }
     
     var windSpeed: String {
-        return "\(Self.numberFormmater.string(for: weatherModel?.wind?.speed) ?? "N/A")"
+        return "\(Helpers.numberFormmater.string(for: weatherModel?.wind?.speed) ?? "N/A")"
     }
     
     var gustSpeed: String {
-        return "\(Self.numberFormmater.string(for: weatherModel?.wind?.gust) ?? "N/A")"
+        return "\(Helpers.numberFormmater.string(for: weatherModel?.wind?.gust) ?? "N/A")"
     }
     
     var windDirectionDeg: Double {
@@ -153,7 +136,7 @@ class WeatherViewModel: ObservableObject {
     }
     
     var feelsLike: String {
-        return "\(Self.numberFormmater.string(for: weatherModel?.main?.feelsLike) ?? "N/A")°"
+        return "\(Helpers.numberFormmater.string(for: weatherModel?.main?.feelsLike) ?? "N/A")°"
     }
     
     var feelsLikeVerbiage: String {
@@ -233,7 +216,6 @@ class WeatherViewModel: ObservableObject {
         }
     }
     
-    
     func fetchWeatherData(lat: Double?, lon: Double?) {
         
         guard let lat = lat, let lon = lon else {
@@ -245,7 +227,9 @@ class WeatherViewModel: ObservableObject {
         userLatitude = lat
         userLongitude = lon
         
-        apiService.getData(from: "https://api.openweathermap.org/data/2.5/weather?lat=\(lat)&lon=\(lon)&appid=3f605b4d76506707219e34688a1229b6&units=imperial") { [weak self] (result: Result<WeatherModel, CustomError>) in
+        let endpoint = ApiEndpoint.getWeather(lat: lat, lon: lon)
+        
+        APIService.sharedInstance.getData(from: endpoint) { [weak self] (result: Result<WeatherModel, CustomError>) in
             DispatchQueue.main.async {
                 switch result {
                 case .success(let data):

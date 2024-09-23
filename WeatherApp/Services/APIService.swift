@@ -13,11 +13,11 @@ final class APIService {
     
     private init() {}
     
-    func getData(from urlString: String,
+    func getData(from endpoint: ApiEndpoint,
                  dateDecodingStrategy: JSONDecoder.DateDecodingStrategy = .secondsSince1970,
                  completion: @escaping (Result<WeatherModel, CustomError>) -> Void) {
         
-        guard let url = URL(string: urlString) else {
+        guard let url = endpoint.url else {
             completion(.failure(.error(NSLocalizedString("Error: Invalid URL", comment: ""))))
             return
         }
@@ -27,6 +27,7 @@ final class APIService {
         URLSession.shared.dataTask(with: request) { (data, response, error) in
             if let error = error {
                 completion(.failure(.error("Error: \(error.localizedDescription)")))
+                return
             }
             
             guard let data = data else {
@@ -45,6 +46,6 @@ final class APIService {
                 completion(.failure(.error("Error: \(decodingError.localizedDescription)")))
             }
         }.resume()
-        
     }
 }
+

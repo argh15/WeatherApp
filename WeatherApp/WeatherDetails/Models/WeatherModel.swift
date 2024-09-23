@@ -4,7 +4,7 @@
 //
 //  Created by Arghadeep Chakraborty on 9/21/24.
 //
-// not considering the units -> default is standard from API documentation
+// considering only imperial units -> default is standard from API documentation
 
 import Foundation
 
@@ -63,4 +63,10 @@ struct Wind: Codable {
     let speed: Double?
     let deg: Int?
     let gust: Double?
+}
+
+// MARK: - Global Location
+struct GlobalLocation {
+    static var latitude: Double?
+    static var longitude: Double?
 }
