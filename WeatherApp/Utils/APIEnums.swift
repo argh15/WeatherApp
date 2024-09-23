@@ -7,7 +7,7 @@
 
 import Foundation
 
-enum CustomError: Error {
+enum CustomError: Error, Equatable {
     case error(_ errorString: String)
 }
 

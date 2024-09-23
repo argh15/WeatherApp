@@ -34,7 +34,7 @@ struct Coord: Codable {
 // MARK: - Main
 struct Main: Codable {
     let temp, feelsLike, tempMin, tempMax: Double?
-    let pressure, humidity, seaLevel, grndLevel: Int?
+    let pressure, humidity: Int?
 }
 
 // MARK: - RainSnow

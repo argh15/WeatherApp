@@ -8,7 +8,12 @@
 import Foundation
 import CoreLocation
 
-final class LocationService: NSObject, CLLocationManagerDelegate {
+protocol LocationServiceProtocol {
+    func getCoordinates(from address: String, completion: @escaping (Result<(Double, Double), CustomError>) -> Void)
+    func requestLocationPermission(completion: @escaping (Result<Void, CustomError>) -> Void)
+}
+
+final class LocationService: NSObject, CLLocationManagerDelegate, LocationServiceProtocol {
     
     static let sharedInstance = LocationService()
     

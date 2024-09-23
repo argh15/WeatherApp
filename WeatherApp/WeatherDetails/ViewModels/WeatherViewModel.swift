@@ -16,12 +16,16 @@ class WeatherViewModel: ObservableObject {
     @AppStorage("userLatitude") var userLatitude: Double?
     @AppStorage("userLongitude") var userLongitude: Double?
     
-    let apiService = APIService.sharedInstance
-    let locationService = LocationService.sharedInstance
+    private var apiService: APIServiceProtocol
+    private var locationService: LocationServiceProtocol
     var cityName: String?
     
-    init(cityName: String? = nil) {
+    init(cityName: String? = nil, 
+         apiService: APIServiceProtocol = APIService.sharedInstance,
+         locationService: LocationServiceProtocol = LocationService.sharedInstance) {
         self.cityName = cityName
+        self.apiService = apiService
+        self.locationService = locationService
         checkForUserDefaults()
     }
     
@@ -206,7 +210,7 @@ class WeatherViewModel: ObservableObject {
                 case .success((let lat, let lon)):
                     self?.fetchWeatherData(lat: lat, lon: lon)
                 case .failure(let error):
-                    self?.errorMessage = "Error fetching coordinates: \(error.localizedDescription)"
+                    self?.errorMessage = "Error fetching coordinates: Invalid City"
                     self?.isLoading = false
                 }
             }

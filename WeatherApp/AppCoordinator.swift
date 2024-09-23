@@ -8,7 +8,12 @@
 import SwiftUI
 import UIKit
 
-class AppCoordinator: ObservableObject {
+protocol AppCoordinatorProtocol {
+    func moveToNextScreen(with cityName: String?)
+    func handleError(_ error: CustomError) // Add this line
+}
+
+class AppCoordinator: ObservableObject, AppCoordinatorProtocol {
     
     @AppStorage("isFirstLaunch") private var isFirstLaunch: Bool = true
     @State var selectedCity: String?
@@ -31,5 +36,9 @@ class AppCoordinator: ObservableObject {
     func moveToNextScreen(with cityName: String?) {
         self.selectedCity = cityName
         completeFirstLaunch()
+    }
+    
+    func handleError(_ error: CustomError) {
+        print("Error occurred: \(error.localizedDescription)")
     }
 }

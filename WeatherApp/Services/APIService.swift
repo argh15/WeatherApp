@@ -7,7 +7,13 @@
 
 import Foundation
 
-final class APIService {
+protocol APIServiceProtocol {
+    func getData(from endpoint: ApiEndpoint,
+                 dateDecodingStrategy: JSONDecoder.DateDecodingStrategy,
+                 completion: @escaping (Result<WeatherModel, CustomError>) -> Void)
+}
+
+final class APIService: APIServiceProtocol {
     
     static let sharedInstance = APIService()
     
