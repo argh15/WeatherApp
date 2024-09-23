@@ -10,10 +10,21 @@ import UIKit
 
 @main
 struct WeatherAppApp: App {
+    
+    @AppStorage("isFirstLaunch") private var isFirstLaunch: Bool = true
+    
     var body: some Scene {
         WindowGroup {
-            MyUIViewControllerRepresentable()
-                .edgesIgnoringSafeArea(.all)
+            if isFirstLaunch {
+                MyUIViewControllerRepresentable()
+                    .edgesIgnoringSafeArea(.all)
+                    .onDisappear {
+                        isFirstLaunch = false
+                    }
+            } else {
+                let weatherVM = WeatherViewModel()
+                WeatherDetailView(weatherVM: weatherVM)
+            }
         }
     }
 }
@@ -28,7 +39,7 @@ struct MyUIViewControllerRepresentable: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> UIViewController {
         return LocationViewController()
     }
-
+    
     func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
         // Any updates go here if needed
     }

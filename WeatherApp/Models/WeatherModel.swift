@@ -64,9 +64,3 @@ struct Wind: Codable {
     let deg: Int?
     let gust: Double?
 }
-
-// MARK: - Coordinates
-struct Coordinates: Codable {
-    let lat: Double
-    let lon: Double
-}

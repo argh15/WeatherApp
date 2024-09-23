@@ -9,15 +9,11 @@ import UIKit
 import SwiftUI
 import CoreLocation
 
-final class LocationViewController: UIViewController, UITextFieldDelegate, CLLocationManagerDelegate {
+final class LocationViewController: UIViewController, UITextFieldDelegate {
     
-    private var isDayTime: Bool = true
     private let searchTextField = UITextField()
     private let scrollView = UIScrollView()
     private let containerView = UIView()
-    private let locationManager = CLLocationManager()
-    private var lastKnownLatitude: Double?
-    private var lastKnownLongitude: Double?
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -28,55 +24,6 @@ final class LocationViewController: UIViewController, UITextFieldDelegate, CLLoc
         setupGesture()
         
         searchTextField.delegate = self
-        locationManager.delegate = self
-        locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
-    }
-    
-    private func shouldFetchWeather(for latitude: Double, longitude: Double) -> Bool {
-        // Check if the current location is significantly different from the last known location
-        let hasMovedSignificantly = (lastKnownLatitude != latitude || lastKnownLongitude != longitude)
-
-        // If the location has moved significantly, update the last known coordinates
-        if hasMovedSignificantly {
-            lastKnownLatitude = latitude
-            lastKnownLongitude = longitude
-            
-            // Update the global location variables
-            GlobalLocation.latitude = latitude
-            GlobalLocation.longitude = longitude
-        }
-        
-        return hasMovedSignificantly
-    }
-    
-    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
-        switch status {
-        case .authorizedWhenInUse, .authorizedAlways:
-            locationManager.startUpdatingLocation()
-        case .denied, .restricted:
-            // Handle denied access
-            print("Location access denied.")
-        default:
-            break
-        }
-    }
-    
-    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let location = locations.first else { return }
-        
-        let latitude = location.coordinate.latitude
-        let longitude = location.coordinate.longitude
-        print("Latitude: \(latitude), Longitude: \(longitude)")
-        
-        if shouldFetchWeather(for: latitude, longitude: longitude) {
-            moveToWeatherDetailsView(cityName: nil, lat: latitude, lon: longitude)
-        }
-        
-        locationManager.stopUpdatingLocation()
-    }
-    
-    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        print("Failed to find user's location: \(error.localizedDescription)")
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -109,11 +56,18 @@ final class LocationViewController: UIViewController, UITextFieldDelegate, CLLoc
     }
     
     @objc private func fetchLocation() {
-        locationManager.requestWhenInUseAuthorization()
+        LocationService.sharedInstance.requestLocationPermission { [weak self] result in
+            switch result {
+            case .success:
+                self?.moveToWeatherDetailsView(cityName: nil)
+            case .failure(let error):
+                print("Error: \(error.localizedDescription)")
+            }
+        }
     }
     
-    private func moveToWeatherDetailsView(cityName: String?, lat: Double?, lon: Double?) {
-        let weatherVM = WeatherViewModel(cityName: cityName, lat: lat, lon: lon, isDayTime: isDayTime)
+    private func moveToWeatherDetailsView(cityName: String?) {
+        let weatherVM = WeatherViewModel(cityName: cityName)
         let weatherDetailView = WeatherDetailView(weatherVM: weatherVM)
         let hostingController = UIHostingController(rootView: weatherDetailView)
         hostingController.modalPresentationStyle = .fullScreen
@@ -126,8 +80,27 @@ final class LocationViewController: UIViewController, UITextFieldDelegate, CLLoc
     }
     
     @objc private func performSearch() {
-        moveToWeatherDetailsView(cityName: searchTextField.text, lat: nil, lon: nil)
+        if let text = searchTextField.text, !text.isEmpty {
+            moveToWeatherDetailsView(cityName: searchTextField.text)
+        } else {
+            showLocationAlert()
+        }
         dismissKeyboard()
+    }
+    
+    private func showLocationAlert() {
+        let alert = UIAlertController(
+            title: "Location Required",
+            message: "Can't proceed without location information. Please either enter a city name or share your current location.",
+            preferredStyle: .alert
+        )
+        
+        let dismissAction = UIAlertAction(title: "Dismiss", style: .cancel, handler: nil)
+        
+        alert.addAction(dismissAction)
+        
+        // Present the alert
+        self.present(alert, animated: true, completion: nil)
     }
     
     private func setupGesture() {
@@ -152,9 +125,7 @@ final class LocationViewController: UIViewController, UITextFieldDelegate, CLLoc
     }
     
     private func updateGradientBasedOnTime() {
-        let hour = Calendar.current.component(.hour, from: Date())
-        isDayTime = (hour >= 6 && hour < 18)
-        isDayTime ? setDayGradient() : setNightGradient()
+        Helpers.isNight ? setNightGradient() : setDayGradient()
         updatePlaceholderColor()
     }
     
@@ -183,7 +154,7 @@ final class LocationViewController: UIViewController, UITextFieldDelegate, CLLoc
     }
     
     private func updatePlaceholderColor() {
-        let placeholderColor: UIColor = isDayTime ? UIColor.white.withAlphaComponent(0.4) : UIColor.lightGray
+        let placeholderColor: UIColor = Helpers.isNight ? UIColor.lightGray : UIColor.white.withAlphaComponent(0.4)
         searchTextField.attributedPlaceholder = NSAttributedString(
             string: "Enter city name",
             attributes: [NSAttributedString.Key.foregroundColor: placeholderColor]

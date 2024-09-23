@@ -10,6 +10,6 @@ import Foundation
 struct Constants {
     
     struct ViewDimensions {
-        static let weatherDetailCardViewHeight: CGFloat = 160
+        static let weatherDetailCardViewHeight: CGFloat = 120
     }
 }

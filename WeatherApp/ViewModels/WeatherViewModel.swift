@@ -6,30 +6,29 @@
 //
 
 import Foundation
+import SwiftUI
 
 class WeatherViewModel: ObservableObject {
     
     @Published var weatherModel: WeatherModel? = nil
     @Published var errorMessage: String? = nil
     @Published var isLoading: Bool = false
-    @Published var isDayTime: Bool = false
+    @AppStorage("userLatitude") var userLatitude: Double?
+    @AppStorage("userLongitude") var userLongitude: Double?
     
     let apiService = APIService.sharedInstance
     let locationService = LocationService.sharedInstance
-    let cityName: String?
-    var lat: Double?
-    var lon: Double?
+    var cityName: String?
     
-    init(cityName: String? = nil, 
-         lat: Double? = nil,
-         lon: Double? = nil,
-         isDayTime: Bool) {
+    init(cityName: String? = nil) {
         self.cityName = cityName
-        self.lat = lat
-        self.lon = lon
-        self.isDayTime = isDayTime
+        checkForUserDefaults()
     }
     
+    private func checkForUserDefaults() {
+        GlobalLocation.latitude = userLatitude
+        GlobalLocation.longitude = userLongitude
+    }
     
     private static var dateFormatter: DateFormatter {
         let dateFormatter = DateFormatter()
@@ -191,45 +190,60 @@ class WeatherViewModel: ObservableObject {
         }
     }
     
-    func fetchData(currentLocation: Bool = false) {
-        
-        if currentLocation {
-            self.lat = GlobalLocation.latitude
-            self.lon = GlobalLocation.longitude
-            self.weatherModel = nil
-        }
-        
+    func fetchData(currentLocation: Bool = false, onRetry: Bool = false) {
         isLoading = true
         errorMessage = nil
         
-        if let cityName = cityName {
-            locationService.getCoordinates(from: cityName) { [weak self] (result: Result<Coordinates, CustomError>) in
+        if onRetry {
+            checkForUserDefaults()
+        }
+        
+        if currentLocation {
+            self.cityName = nil
+            self.weatherModel = nil
+            
+            // Check if we already have the latitude and longitude
+            if GlobalLocation.latitude != nil && GlobalLocation.longitude != nil {
+                fetchWeatherData(lat: GlobalLocation.latitude, lon: GlobalLocation.longitude)
+            } else {
+                // Request location if it isn't set
+                locationService.requestLocationPermission { [weak self] result in
+                    switch result {
+                    case .success:
+                        self?.fetchWeatherData(lat: GlobalLocation.latitude, lon: GlobalLocation.longitude)
+                    case .failure(let error):
+                        self?.errorMessage = "Failed to get location: \(error.localizedDescription)"
+                        self?.isLoading = false
+                    }
+                }
+            }
+        } else if let cityName = cityName {
+            locationService.getCoordinates(from: cityName) { [weak self] result in
                 switch result {
-                case .success(let data):
-                    self?.lat = data.lat
-                    self?.lon = data.lon
-                    self?.fetchWeatherData()
-                case .failure(let failure):
-                    self?.errorMessage = failure.localizedDescription
+                case .success((let lat, let lon)):
+                    self?.fetchWeatherData(lat: lat, lon: lon)
+                case .failure(let error):
+                    self?.errorMessage = "Error fetching coordinates: \(error.localizedDescription)"
                     self?.isLoading = false
                 }
             }
-        } else if let lat = lat, let lon = lon {
-            print("Using provided Lat: \(lat), Lon: \(lon)")
-            fetchWeatherData()
         } else {
-            errorMessage = "No location information provided."
-            isLoading = false
+            self.isLoading = false
+            self.errorMessage = "No location information provided."
         }
     }
     
-    func fetchWeatherData() {
+    
+    func fetchWeatherData(lat: Double?, lon: Double?) {
         
         guard let lat = lat, let lon = lon else {
             errorMessage = "Coordinates not available."
             isLoading = false
             return
         }
+        
+        userLatitude = lat
+        userLongitude = lon
         
         apiService.getData(from: "https://api.openweathermap.org/data/2.5/weather?lat=\(lat)&lon=\(lon)&appid=3f605b4d76506707219e34688a1229b6&units=imperial") { [weak self] (result: Result<WeatherModel, CustomError>) in
             DispatchQueue.main.async {

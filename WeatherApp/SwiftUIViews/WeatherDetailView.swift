@@ -3,6 +3,9 @@ import SwiftUI
 struct WeatherDetailView: View {
     
     @ObservedObject var weatherVM: WeatherViewModel
+    @State private var showAlert = false
+    @State private var searchText = ""
+    @State private var keyboardHeight: CGFloat = 0
     
     init(weatherVM: WeatherViewModel) {
         self.weatherVM = weatherVM
@@ -10,10 +13,10 @@ struct WeatherDetailView: View {
     
     var body: some View {
         ZStack {
-            if weatherVM.isDayTime {
-                DayGradientView()
-            } else {
+            if Helpers.isNight {
                 NightGradientView()
+            } else {
+                DayGradientView()
             }
             
             VStack {
@@ -21,10 +24,17 @@ struct WeatherDetailView: View {
                     ProgressView("Loading...")
                         .progressViewStyle(CircularProgressViewStyle())
                         .padding()
+                        .tint(.white)
+                        .foregroundStyle(.white)
                 } else if let errorMessage = weatherVM.errorMessage {
-                    Text("Error: \(errorMessage)")
-                        .foregroundColor(.red)
-                        .padding()
+                    ErrorView(
+                            errorImage: Image(systemName: "exclamationmark.triangle.fill"),
+                            errorTitle: "Weather Fetch Error",
+                            errorDescription: errorMessage, onRetry: {
+                                weatherVM.fetchData(onRetry: true)
+                            }
+                    )
+                    .padding()
                 } else if weatherVM.weatherModel != nil {
                     ScrollView(showsIndicators: false) {
                         ZStack(alignment: .top) {
@@ -49,7 +59,7 @@ struct WeatherDetailView: View {
                                 Spacer()
                                 
                                 Button(action: {
-                                    print("Edit tapped")
+                                    showAlert.toggle()
                                 }) {
                                     Text("Edit")
                                         .font(.system(size: 17, weight: .medium))
@@ -67,10 +77,86 @@ struct WeatherDetailView: View {
             }
             .padding(.horizontal)
         }
-        .edgesIgnoringSafeArea(.bottom)
+        .overlay(
+            GeometryReader { geometry in
+                if showAlert {
+                    ZStack {
+                        Color.black.opacity(0.7)
+                            .edgesIgnoringSafeArea(.all)
+                        
+                        VStack {
+                            Text("Search City")
+                                .font(.headline)
+                                .foregroundColor(.black)
+                                .padding(.bottom, 10)
+                            
+                            SearchBarView(searchText: $searchText) {
+                                weatherVM.cityName = searchText
+                                weatherVM.fetchData(currentLocation: false)
+                                showAlert.toggle()
+                                searchText = ""
+                            }
+                            
+                            HStack {
+                                Button(action: {
+                                    showAlert.toggle()
+                                    searchText = ""
+                                }) {
+                                    Text("Cancel")
+                                        .foregroundColor(.red)
+                                        .padding()
+                                        .frame(maxWidth: .infinity)
+                                }
+                                
+                                Button(action: {
+                                    weatherVM.cityName = searchText
+                                    weatherVM.fetchData(currentLocation: false)
+                                    showAlert.toggle()
+                                    searchText = ""
+                                }) {
+                                    Text("Search")
+                                        .foregroundColor(.blue)
+                                        .padding()
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .disabled(searchText.isEmpty) 
+                                .padding(.trailing, 8)
+                            }
+                            .font(.headline)
+                        }
+                        .padding()
+                        .background(Color.white.opacity(0.9))
+                        .cornerRadius(10)
+                        .padding(.horizontal, 40)
+                        .offset(y: -keyboardHeight / 2)
+                        .animation(.easeInOut, value: showAlert)
+                    }
+                    .onAppear {
+                        NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillShowNotification, object: nil, queue: .main) { notification in
+                            if let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
+                                keyboardHeight = keyboardFrame.height
+                            }
+                        }
+                        NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillHideNotification, object: nil, queue: .main) { _ in
+                            keyboardHeight = 0
+                        }
+                    }
+                    .onDisappear {
+                        // Stop observing keyboard changes
+                        NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardWillShowNotification, object: nil)
+                        NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardWillHideNotification, object: nil)
+                    }
+                }
+            }
+        )
         .onAppear {
-            weatherVM.fetchData()
+            if weatherVM.cityName == nil {
+                weatherVM.fetchData(currentLocation: true)
+            } else {
+                weatherVM.fetchData()
+            }
         }
+        .edgesIgnoringSafeArea(.bottom)
     }
 }
 
@@ -80,15 +166,17 @@ extension WeatherDetailView {
             Text(weatherVM.location)
                 .font(.headline)
                 .padding(.top, 16)
-            AsyncImage(url: weatherVM.weatherModel?.weather?.first?.iconURL) { image in
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 48, height: 48)
-                    .clipped()
-            } placeholder: {
-                ProgressView()
-                    .frame(width: 48, height: 48)
+            CacheAsyncImage(url: weatherVM.weatherModel?.weather?.first?.iconURL) { phase in
+                if case .success(let image) = phase {
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 48, height: 48)
+                        .clipped()
+                } else if case .empty = phase {
+                    ProgressView()
+                        .frame(width: 48, height: 48)
+                }
             }
             Text(weatherVM.currentTemp)
                 .font(.largeTitle)
@@ -147,9 +235,7 @@ extension WeatherDetailView {
                         .resizable()
                         .frame(width: 40, height: 40)
                         .rotationEffect(Angle(degrees: weatherVM.windDirectionDeg))
-                        .foregroundColor(.secondary)
                         .padding()
-                    
                     
                     VStack(alignment: .leading) {
                         Text(weatherVM.windDirection)
@@ -162,7 +248,8 @@ extension WeatherDetailView {
                 }
             }
         }
-        .frame(height: Constants.ViewDimensions.weatherDetailCardViewHeight)
+        .foregroundStyle(Helpers.isNight ? .white : .black)
+        .groupBoxStyle(.cardView)
     }
     
     private var feelsLikeCardView: some View {
@@ -180,7 +267,8 @@ extension WeatherDetailView {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .frame(height: Constants.ViewDimensions.weatherDetailCardViewHeight)
+        .foregroundStyle(Helpers.isNight ? .white : .black)
+        .groupBoxStyle(.cardView)
     }
     
     private var humidityCardView: some View {
@@ -199,7 +287,8 @@ extension WeatherDetailView {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .frame(height: Constants.ViewDimensions.weatherDetailCardViewHeight)
+        .foregroundStyle(Helpers.isNight ? .white : .black)
+        .groupBoxStyle(.cardView)
     }
     
     private var cloudsCardView: some View {
@@ -218,7 +307,8 @@ extension WeatherDetailView {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .frame(height: Constants.ViewDimensions.weatherDetailCardViewHeight)
+        .foregroundStyle(Helpers.isNight ? .white : .black)
+        .groupBoxStyle(.cardView)
     }
     
     private var visibilityCardView: some View {
@@ -237,7 +327,8 @@ extension WeatherDetailView {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .frame(height: Constants.ViewDimensions.weatherDetailCardViewHeight)
+        .foregroundStyle(Helpers.isNight ? .white : .black)
+        .groupBoxStyle(.cardView)
     }
     
     private var sunCycleView: some View {
@@ -252,6 +343,8 @@ extension WeatherDetailView {
                     .font(.callout)
             }
         }
+        .foregroundStyle(Helpers.isNight ? .white : .black)
+        .groupBoxStyle(.bannerView)
     }
     
     
@@ -259,6 +352,7 @@ extension WeatherDetailView {
         VStack {
             Text(weatherVM.date)
                 .font(.caption)
+                .foregroundStyle(.white)
             sunCycleView
             HStack {
                 windCardView
@@ -303,6 +397,40 @@ struct NightGradientView: View {
     }
 }
 
+struct CardViewStyle: GroupBoxStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        VStack(alignment: .leading) {
+            configuration.label
+                .bold()
+            configuration.content
+        }
+        .frame(height: Constants.ViewDimensions.weatherDetailCardViewHeight)
+        .padding()
+        .background(Color(.init(white: 1.0, alpha: 0.2)), in: RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+struct BannerViewStyle: GroupBoxStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        VStack(alignment: .leading) {
+            configuration.label
+                .bold()
+            configuration.content
+        }
+        .padding()
+        .background(Color(.init(white: 1.0, alpha: 0.2)), in: RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+
+extension GroupBoxStyle where Self == CardViewStyle {
+    static var cardView: CardViewStyle { .init() }
+}
+
+extension GroupBoxStyle where Self == BannerViewStyle {
+    static var bannerView: BannerViewStyle { .init() }
+}
+
 #Preview {
-    WeatherDetailView(weatherVM: WeatherViewModel(cityName: "Hudson", isDayTime: true))
+    WeatherDetailView(weatherVM: WeatherViewModel(cityName: "Hudson"))
 }
